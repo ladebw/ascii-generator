@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ASCII Word PNG Generator</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      padding: 30px;
+    }
+
+    .panel {
+      max-width: 900px;
+      margin: auto;
+      background: #1b1b1b;
+      padding: 20px;
+      border-radius: 14px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+
+    button {
+      background: #00ffaa;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    canvas {
+      width: 100%;
+      margin-top: 20px;
+      border: 1px solid #333;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+
+<div class="panel">
+  <h1>ASCII Word PNG Generator</h1>
+
+  <label>Word or phrase</label>
+  <input id="textInput" value="VALIDATE BEFORE SUBMIT" />
+
+  <label>Format / Aspect Ratio</label>
+  <select id="ratioInput">
+    <option value="5:2">5:2 Twitter Wide</option>
+    <option value="16:9">16:9 Landscape</option>
+    <option value="9:16">9:16 Vertical</option>
+    <option value="1:1">1:1 Square</option>
+    <option value="4:5">4:5 Portrait</option>
+    <option value="2:1">2:1 Wide Card</option>
+  </select>
+
+  <label>Color Palette</label>
+  <select id="paletteInput">
+    <option value="white">White Matrix</option>
+    <option value="green">Green Hacker</option>
+    <option value="cyan">Cyber Cyan</option>
+    <option value="red">Red Alert</option>
+    <option value="purple">Purple Neon</option>
+    <option value="gold">Gold Dark</option>
+  </select>
+
+  <button onclick="generate()">Generate</button>
+  <button onclick="downloadPNG()">Download PNG</button>
+
+  <canvas id="canvas"></canvas>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const palettes = {
+  white: {
+    bg: "#000000",
+    dim: "rgb(35,35,35)",
+    bright: "rgb(255,255,255)"
+  },
+  green: {
+    bg: "#000000",
+    dim: "rgb(15,60,35)",
+    bright: "rgb(0,255,120)"
+  },
+  cyan: {
+    bg: "#02070a",
+    dim: "rgb(20,65,75)",
+    bright: "rgb(0,240,255)"
+  },
+  red: {
+    bg: "#090000",
+    dim: "rgb(70,20,20)",
+    bright: "rgb(255,55,55)"
+  },
+  purple: {
+    bg: "#06000c",
+    dim: "rgb(55,25,80)",
+    bright: "rgb(190,80,255)"
+  },
+  gold: {
+    bg: "#070500",
+    dim: "rgb(75,60,25)",
+    bright: "rgb(255,200,60)"
+  }
+};
+
+function parseRatio(ratio) {
+  const [w, h] = ratio.split(":").map(Number);
+  return { w, h };
+}
+
+function generate() {
+  const text = document.getElementById("textInput").value.trim() || "TEXT";
+  const ratio = document.getElementById("ratioInput").value;
+  const paletteName = document.getElementById("paletteInput").value;
+  const palette = palettes[paletteName];
+
+  const baseWidth = 1500;
+  const { w, h } = parseRatio(ratio);
+
+  canvas.width = baseWidth;
+  canvas.height = Math.round(baseWidth * h / w);
+
+  ctx.fillStyle = palette.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const cellSize = Math.max(10, Math.floor(canvas.width / 120));
+
+  ctx.font = `bold ${cellSize}px monospace`;
+  ctx.textBaseline = "top";
+
+  let bigFontSize = canvas.height * 0.45;
+
+  while (bigFontSize > 20) {
+    ctx.font = `900 ${bigFontSize}px Arial`;
+    const metrics = ctx.measureText(text);
+
+    if (metrics.width < canvas.width * 0.85) break;
+    bigFontSize -= 5;
+  }
+
+  const maskCanvas = document.createElement("canvas");
+  const maskCtx = maskCanvas.getContext("2d");
+
+  maskCanvas.width = canvas.width;
+  maskCanvas.height = canvas.height;
+
+  maskCtx.fillStyle = "black";
+  maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+
+  maskCtx.font = `900 ${bigFontSize}px Arial`;
+  maskCtx.textAlign = "center";
+  maskCtx.textBaseline = "middle";
+  maskCtx.fillStyle = "white";
+  maskCtx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const maskData = maskCtx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+  ctx.font = `bold ${cellSize}px monospace`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  for (let y = 0; y < canvas.height; y += cellSize) {
+    for (let x = 0; x < canvas.width; x += cellSize) {
+      const index = (y * canvas.width + x) * 4;
+      const isWord = maskData[index] > 100;
+
+      ctx.fillStyle = isWord ? palette.bright : palette.dim;
+      ctx.fillText(
+        chars[Math.floor(Math.random() * chars.length)],
+        x,
+        y
+      );
+    }
+  }
+}
+
+function downloadPNG() {
+  const link = document.createElement("a");
+  link.download = "ascii-word-art.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+generate();
+</script>
+
+</body>
+</html>
